@@ -1,8 +1,7 @@
-extern crate rustc_serialize;
-
+use log::debug;
 use rusb::{ Device, DeviceHandle, GlobalContext };
-use std::time::Duration;
 use rustc_serialize::hex::ToHex;
+use std::time::Duration;
 
 pub fn devices() -> Result<Vec<Dacal>, rusb::Error> {
     // 0x04b4: Cypress Semiconductor Corp.
@@ -85,7 +84,7 @@ impl Dacal {
         )?;
 
         //TODO: Figure out how to enable this in debug / verbose mode (cleanly)
-        println!("030A ({}): {}", len, &buff[0..len].to_hex());
+        debug!("030A ({}): {}", len, &buff[0..len].to_hex());
 
         if len < 7 {
             return Err(rusb::Error::Other);
@@ -106,7 +105,7 @@ impl Dacal {
         )?;
     
         //TODO: Figure out how to enable this in debug / verbose mode (cleanly)
-        println!("03{:02X} ({}): {}", index, len, &buff[0..len].to_hex());
+        debug!("03{:02X} ({}): {}", index, len, &buff[0..len].to_hex());
 
         return Ok(());
     }

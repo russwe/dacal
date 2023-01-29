@@ -31,6 +31,8 @@ enum Commands {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    pretty_env_logger::init();
+
     let cli = Cli::parse();
 
     match &cli.command {
