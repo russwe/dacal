@@ -27,7 +27,7 @@ enum Commands {
     List {
         #[arg(short, long)]
         status: bool,
-    }
+    },
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -38,6 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Commands::Close  { spindle_id }              => cmd_close(*spindle_id),
         Commands::Status { spindle_id }              => cmd_status(*spindle_id),
         Commands::List   { status }                  => cmd_list(*status),
+
     }
 }
 

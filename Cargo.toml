@@ -9,6 +9,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rustc-serialize = "0.3"
+actix-web = "4"
 clap = { version = "4.0", features = ["derive"] }
+rustc-serialize = "0.3"
 rusb = "0.9.1"
