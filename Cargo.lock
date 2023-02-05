@@ -313,6 +313,7 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "clap",
+ "custom_error",
  "log",
  "pretty_env_logger",
  "rusb",
@@ -406,6 +407,12 @@ dependencies = [
  "generic-array",
  "typenum",
 ]
+
+[[package]]
+name = "custom_error"
+version = "1.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f8a51dd197fa6ba5b4dc98a990a43cc13693c23eb0089ebb0fcc1f04152bca6"
 
 [[package]]
 name = "derive_more"
