@@ -32,6 +32,8 @@ async fn retrieve(info: web::Path<(u16, u8)>) -> Result<String> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    pretty_env_logger::init();
+
     HttpServer::new(|| {
         App::new()
             .service(list)
