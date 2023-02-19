@@ -74,12 +74,22 @@ impl From<rusb::Error> for SpindleError {
 }
 
 impl Dacal {
-    const ID:u16 = 0x0a;
-
-    // Command-Codes
+    // Information on DACAL is hard to find, so I'd like to honor those that came before:
+    // - https://sourceforge.net/projects/qcdorganizer
+    // - https://sourceforge.net/projects/dacal/files/Dacal/0.2-alpha/
+    // - https://sourceforge.net/p/libcdrom/code
+    // - https://sourceforge.net/p/libcdorganizer/code/HEAD/tree/trunk/libcdorganizer/src/plugin/dacal/dacal.c
+    const ID:u8         = 0x0a;
+    const RESET:u8      = 0x0b;
     const MOVE_TO:u8    = 0x0c; // Followed by another request with disc no.
+  //const ???????:u8    = 0x0d; // ? Wonder what this does...
     const RETRACT:u8    = 0x0e;
-  //const GET_STATUS:u8 = 0x00; // ?
+    const LED_ON:u8     = 0x0f;
+  //const LED_OFF:u8    = 0x10;
+    const GET_STATUS:u8 = 0x11; // ! Returns string: b[2,4,6] = 'ACK' | b[2,4,6,8] = 'Busy' | SOS? | ...  (Unicode UTF-16?)
+  //const SLOT_COUNT:u8 = 0x12; // [C016RW:100] ? buffer[2,4,6]
+  //const INSERT:u8     = 0x13; // [C016RW:100] Followed by request with disc no.  o.O
+  //const EJECT:u8      = 0x14; // [C016RW:100]
 
     fn from_device(device: Device<GlobalContext>) -> Result<Dacal, SpindleError> {
         let handle = device.open()?;
