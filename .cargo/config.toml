@@ -1,0 +1,5 @@
+[target.armv7-unknown-linux-gnueabihf]
+linker = "arm-linux-gnueabihf-gcc"
+
+[target.armv7-unknown-linux-gnueabihf."usb-1.0"]
+rustc-flags = "-L /opt/pi/sysroot/lib/arm-linux-gnueabihf -l usb-1.0 -l udev"
