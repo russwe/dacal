@@ -1,3 +1,6 @@
+pub mod error;
+use error::SpindleError;
+
 use log::debug;
 use rusb::{ Device, DeviceHandle, GlobalContext };
 use rustc_serialize::hex::ToHex;
@@ -31,48 +34,6 @@ pub enum DacalStatus {
     Sos(),
 }
 
-#[derive(Debug)]
-pub enum SpindleError {
-    Io,
-    NoAccess,
-    NoSpindle { id: u16 },
-    NoSlot { id: u16, number: u8 },
-    Busy {id: u16 },
-    Timeout,
-    NoMem,
-    UnsupportedOperation,
-    Unknown,
-}
-
-impl std::error::Error for SpindleError {}
-
-impl std::fmt::Display for SpindleError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            SpindleError::Io  => write!(f, "I/O Operation Failure"),
-            SpindleError::NoAccess => write!(f, "Insufficient Access"),
-            SpindleError::Busy { id } => write!(f, "Spindle {} Busy", id),
-            SpindleError::NoSpindle { id } => write!(f, "Spindle {} Not Found", id),
-            SpindleError::NoSlot { id, number } => write!(f, "Spindle {} Slot {} Not Found", id, number),
-            SpindleError::NoMem => write!(f, "Insufficient Memory"),
-            SpindleError::Timeout => write!(f, "Operation timed out"),
-            SpindleError::UnsupportedOperation => write!(f, "Unsupported Operation"),
-            SpindleError::Unknown => write!(f, "Unknown Error"),
-        }
-    }
-}
-
-impl From<rusb::Error> for SpindleError {
-    fn from(error: rusb::Error) -> Self {
-        match error {
-            rusb::Error::Io => SpindleError::Io,
-            rusb::Error::NotSupported => SpindleError::UnsupportedOperation,
-            rusb::Error::Access => SpindleError::NoAccess,
-            _ => SpindleError::Unknown,
-        }
-    }
-}
-
 impl Dacal {
     // Information on DACAL is hard to find, so I'd like to honor those that came before:
     // - https://sourceforge.net/projects/qcdorganizer
@@ -102,32 +63,38 @@ impl Dacal {
     }
 
     pub fn retract_arm(&self) -> Result<(), SpindleError> {
-        let handle = self.device.open()?;
-        Dacal::issue_command(&handle, Dacal::RETRACT)?;
-        return Ok(());
+        self.execute_rusb(|| {
+            let handle = self.device.open()?;
+            Dacal::issue_command(&handle, Dacal::RETRACT)
+        }, |_,_| None)
     }
 
     pub fn access_slot(&self, slot_number: u8) -> Result<(), SpindleError> {
-        let handle = self.device.open()?;
+        if slot_number < 1 || slot_number > 150 {
+            return Err(SpindleError::NoSlot { id: self.id, number: slot_number });
+        }
 
-        Dacal::issue_command(&handle, Dacal::RETRACT)?;
-        
-        Dacal::issue_command(&handle, Dacal::MOVE_TO).map_err(|e| match e {
-            rusb::Error::Busy => SpindleError::Busy { id: self.id },
-            _ => e.into(),
-        })?;
+        self.execute_rusb(|| {
+            let handle = self.device.open()?;
 
-        Dacal::issue_command(&handle, slot_number).map_err(|e| match e {
-            rusb::Error::Busy => SpindleError::Busy { id: self.id },
-            rusb::Error::InvalidParam => SpindleError::NoSlot { id: self.id, number: slot_number },
-            _ => e.into(),
-        })?;
+            Dacal::issue_command(&handle, Dacal::RETRACT)?;
 
-        return Ok(());
+            Dacal::issue_command(&handle, Dacal::MOVE_TO)?;
+            Dacal::issue_command(&handle, slot_number)?;
+
+            Ok(())
+        }, |_,_| None)
     }
 
     pub fn get_status(&self) -> DacalStatus {
-        return DacalStatus::Ok();
+        DacalStatus::Ok()
+    }
+
+    fn execute_rusb<C : FnOnce() -> rusb::Result<()>, I: FnOnce(&Dacal, rusb::Error) -> Option<SpindleError>>(&self, cmds: C, into: I) -> Result<(), SpindleError> {
+        cmds().map_err(|e| match e {
+            rusb::Error::Busy => SpindleError::Busy { id: self.id },
+            _ => into(self, e).unwrap_or_else(|| e.into()),
+        })
     }
 
     fn get_id(handle:&DeviceHandle<GlobalContext>) -> rusb::Result<u16> {
@@ -147,7 +114,7 @@ impl Dacal {
             return Err(rusb::Error::Other);
         }
 
-        return Ok(u16::from(buff[4]) << 8 | u16::from(buff[6]));
+        Ok(u16::from(buff[4]) << 8 | u16::from(buff[6]))
     }
     
     fn issue_command(handle:&DeviceHandle<GlobalContext>, index:u8) -> rusb::Result<()> {
@@ -163,6 +130,6 @@ impl Dacal {
     
         debug!("03{:02X} ({}): {}", index, len, &buff[0..len].to_hex());
 
-        return Ok(());
+        Ok(())
     }
 }
