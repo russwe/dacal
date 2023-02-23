@@ -43,7 +43,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         Commands::Close { spindle_id } => cmd_close(*spindle_id),
         Commands::Status { spindle_id } => cmd_status(*spindle_id),
         Commands::List { identify, status } => cmd_list(*identify, *status),
-
     }
 }
 
@@ -63,9 +62,9 @@ fn cmd_close(spindle_id: u16) -> Result<(), Box<dyn Error>> {
 
 fn cmd_status(spindle_id: u16) -> Result<(), Box<dyn Error>> {
     let d = Dacal::from_id(spindle_id)?;
-    let status = d.get_status();
+    let status = d.get_status()?;
 
-    println!("{}: {:?}", spindle_id, status);
+    println!("{}: {}", spindle_id, status);
 
     Ok(())
 }
@@ -84,8 +83,8 @@ fn cmd_list(identify: bool, status: bool) -> Result<(), Box<dyn Error>> {
 
         print!("{}", d.id);
         if status {
-            let s = d.get_status();
-            print!(": {:?}", s);
+            let s = d.get_status()?;
+            print!(": {}", s);
         }
         println!();
     }
