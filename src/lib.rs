@@ -7,7 +7,7 @@ use rusb::{ Device, DeviceHandle, GlobalContext };
 use rustc_serialize::hex::ToHex;
 use std::time::Duration;
 
-pub fn devices() -> Result<Vec<Dacal>, rusb::Error> {
+pub fn devices() -> Result<Vec<Dacal>, SpindleError> {
     // 0x04b4: Cypress Semiconductor Corp.
     // 0x5a9b: Dacal CD/DVD Library D-101/DC-300/DC-016RW
     // 
@@ -139,6 +139,12 @@ impl Dacal {
         })
     }
 
+    pub fn debug(&self, command: u8) -> Result<(), SpindleError> {
+        self.execute_rusb(|h| {
+            Dacal::issue_command(&h, command)
+        })
+    }
+
     fn execute_rusb<C: FnOnce(&DeviceHandle<GlobalContext>) -> Result<(), RusbOrDacal>>(&self, cmds: C) -> Result<(), SpindleError> {
         self.execute_rusb_and_translate(cmds, |_,_| None)
     }
@@ -151,12 +157,6 @@ impl Dacal {
 
             RusbOrDacal::Rusb { error } => into(self, error).unwrap_or_else(|| error.into()),
             RusbOrDacal::Dacal { status } => SpindleError::ErrorStatus { status },
-        })
-    }
-
-    pub fn debug(&self, command: u8) -> Result<(), SpindleError> {
-        self.execute_rusb(|h| {
-            Dacal::issue_command(&h, command)
         })
     }
 

@@ -1,33 +1,50 @@
 use actix_web::{error, get, web, App, HttpServer, Result};
-use dacal::Dacal;
+use dacal::{Dacal, error::SpindleError};
 
 #[get("/spindles")]
 async fn list() -> Result<String> {
-    Ok(dacal::devices().unwrap().into_iter()
-        .map(|d| d.id.to_string())
-        .fold(String::new(), |a,b| a + &b + "\n"))
+    Ok(dacal::devices()
+        .map(|v| v.into_iter()
+            .map(|s| s.id.to_string())
+            .fold(String::new(), |a,b| a + &b + "\n"))
+        .map_err(|e| error::ErrorInternalServerError(e))?)
 }
 
 #[get("/spindles/{spindle_id}")]
 async fn status(info: web::Path<u16>) -> Result<String> {
     let sid = info.into_inner();
 
-    Dacal::from_id(sid)
-        .map(|s| format!("spindle status {} {:?}", s.id, s.get_status()))
-        .map_err(|_| error::ErrorNotFound(sid))
+    do_dacal(sid, |s| {
+        Ok(format!("{}: {}", sid, s.get_status()?))
+    })
+}
+
+#[get("/spindles/{spindle_id}/slots")]
+async fn identify(info: web::Path<u16>) -> Result<String> {
+    let sid = info.into_inner();
+
+    do_dacal(sid, |s| {
+        s.set_led(true)?;
+        Ok(format!("Lighting {}", sid))
+    })
 }
 
 #[get("/spindles/{spindle_id}/slots/{slot_number}")]
 async fn retrieve(info: web::Path<(u16, u8)>) -> Result<String> {
     let (sid, sn) = info.into_inner();
 
-    if let Ok(s) = Dacal::from_id(sid) {
-        return s.access_slot(sn)
-            .map(|_| "".to_string())
-            .map_err(|_| error::ErrorNotFound(format!("{}-{}", sid, sn)));
-    }
+    do_dacal(sid, |s| {
+        s.access_slot(sn)?;
+        Ok(format!("Accessing {}-{}", sid, sn))
+    })
+}
 
-    Err(error::ErrorNotFound(sid))
+fn do_dacal<F: FnOnce(Dacal) -> std::result::Result<String, SpindleError>>(sid: u16, cmds: F) -> Result<String> {
+    if let Ok(dacal) = Dacal::from_id(sid) {
+        cmds(dacal).map_err(|e| error::ErrorInternalServerError(e))
+    } else {
+        Err(error::ErrorNotFound(format!("{}", sid)))
+    }
 }
 
 #[actix_web::main]
@@ -37,6 +54,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .service(list)
+            .service(identify)
             .service(status)
             .service(retrieve)
     })
