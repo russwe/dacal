@@ -66,7 +66,7 @@ impl Dacal {
         - https://sourceforge.net/p/libcdrom/code
         - https://sourceforge.net/p/libcdorganizer/code/HEAD/tree/trunk/libcdorganizer/src/plugin/dacal/dacal.c
 
-        Response Structure: LL ?? xxxxxxxxxxxx
+        Response Structure: LL??xxxxxxxxxxxx
         LL: Total Length of Response in Bytes
         ??: ?
         xx: UTF-16LE Status ACK, BUSY, SOS, ?
@@ -96,7 +96,7 @@ impl Dacal {
 
     pub fn retract_arm(&self) -> Result<(), SpindleError> {
         self.execute_rusb(|h| {
-            Dacal::issue_command(&h, Dacal::RETRACT)
+            Dacal::issue_command(h, Dacal::RETRACT)
         })
     }
 
@@ -106,16 +106,16 @@ impl Dacal {
         }
 
         self.execute_rusb(|h| {
-            Dacal::issue_command(&h, Dacal::RETRACT)?;
+            Dacal::issue_command(h, Dacal::RETRACT)?;
 
-            Dacal::issue_command(&h, Dacal::MOVE_TO)?;
-            Dacal::issue_command(&h, slot_number)
+            Dacal::issue_command(h, Dacal::MOVE_TO)?;
+            Dacal::issue_command(h, slot_number)
         })
     }
 
     pub fn get_status(&self) -> Result<DacalStatus, SpindleError> {
         let r = self.execute_rusb(|h| {
-            Dacal::issue_command(&h, Dacal::GET_STATUS)
+            Dacal::issue_command(h, Dacal::GET_STATUS)
         });
 
         match r.err() {
@@ -127,7 +127,7 @@ impl Dacal {
 
     pub fn reset(&self) -> Result<(), SpindleError> {
         self.execute_rusb(|h| {            
-            Dacal::issue_command(&h, Dacal::RESET)
+            Dacal::issue_command(h, Dacal::RESET)
         })
     }
 
@@ -135,22 +135,28 @@ impl Dacal {
         let command = if on { Dacal::LED_ON } else { Dacal::LED_OFF };
 
         self.execute_rusb(|h| {
-            Dacal::issue_command(&h, command)
+            Dacal::issue_command(h, command)
         })
     }
 
-    fn execute_rusb<C : FnOnce(DeviceHandle<GlobalContext>) -> Result<(), RusbOrDacal>>(&self, cmds: C) -> Result<(), SpindleError> {
+    fn execute_rusb<C: FnOnce(&DeviceHandle<GlobalContext>) -> Result<(), RusbOrDacal>>(&self, cmds: C) -> Result<(), SpindleError> {
         self.execute_rusb_and_translate(cmds, |_,_| None)
     }
 
-    fn execute_rusb_and_translate<C : FnOnce(DeviceHandle<GlobalContext>) -> Result<(), RusbOrDacal>, I: FnOnce(&Dacal, rusb::Error) -> Option<SpindleError>>(&self, cmds: C, into: I) -> Result<(), SpindleError> {
+    fn execute_rusb_and_translate<C : FnOnce(&DeviceHandle<GlobalContext>) -> Result<(), RusbOrDacal>, I: FnOnce(&Dacal, rusb::Error) -> Option<SpindleError>>(&self, cmds: C, into: I) -> Result<(), SpindleError> {
         let handle = self.device.open()?;
-        cmds(handle).map_err(|e| match e {
+        cmds(&handle).map_err(|e| match e {
             RusbOrDacal::Rusb { error: rusb::Error::Busy } => SpindleError::Busy { id: self.id },
             RusbOrDacal::Dacal { status: DacalStatus::Busy } => SpindleError::Busy {id: self.id },
 
             RusbOrDacal::Rusb { error } => into(self, error).unwrap_or_else(|| error.into()),
             RusbOrDacal::Dacal { status } => SpindleError::ErrorStatus { status },
+        })
+    }
+
+    pub fn debug(&self, command: u8) -> Result<(), SpindleError> {
+        self.execute_rusb(|h| {
+            Dacal::issue_command(&h, command)
         })
     }
 

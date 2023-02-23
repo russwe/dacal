@@ -1,4 +1,5 @@
 use crate::DacalStatus;
+use log::debug;
 
 #[derive(Debug)]
 pub enum SpindleError {
@@ -35,6 +36,7 @@ impl std::fmt::Display for SpindleError {
 
 impl From<rusb::Error> for SpindleError {
     fn from(error: rusb::Error) -> Self {
+        debug!("{:?}", error);
         match error {
             rusb::Error::Io => SpindleError::Io,
             rusb::Error::NotSupported => SpindleError::UnsupportedOperation,
