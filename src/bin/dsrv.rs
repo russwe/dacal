@@ -1,5 +1,14 @@
 use actix_web::{error, get, web, App, HttpServer, Result};
 use dacal::{Dacal, error::SpindleError};
+use clap::Parser;
+
+// sudo setcap cap_net_bind_service=ep ~/dsrv  ;_; but it works
+
+#[derive(Parser)]
+struct Cli {
+    #[arg(short, long)]
+    bind: Option<String>,
+}
 
 #[get("/spindles")]
 async fn list() -> Result<String> {
@@ -51,6 +60,9 @@ fn do_dacal<F: FnOnce(Dacal) -> std::result::Result<String, SpindleError>>(sid: 
 async fn main() -> std::io::Result<()> {
     pretty_env_logger::init();
 
+    let cli = Cli::parse();
+    let ip_port = cli.bind.unwrap_or("0.0.0.0:8080".to_string());
+
     HttpServer::new(|| {
         App::new()
             .service(list)
@@ -58,7 +70,7 @@ async fn main() -> std::io::Result<()> {
             .service(status)
             .service(retrieve)
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(&ip_port)?
     .run()
     .await
 }
