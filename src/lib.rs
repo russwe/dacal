@@ -53,6 +53,7 @@ impl From<String> for DacalStatus {
         match &s[..] {
             "ACK" => DacalStatus::Ok,
             "BUSY" => DacalStatus::Busy,
+            "ERROR" => DacalStatus::Sos,
             _ => DacalStatus::Unknown { status: s },
         }
     }
@@ -191,10 +192,15 @@ impl Dacal {
             Duration::from_secs(1)
         )?;
     
-        let rstatus = WStr::from_utf16le(&buff[2..len]).map_or_else(
-            |_| "Parse Error".to_string(),
-            |s| s.to_string()
-        );
+        let rstatus = if len > 2 {
+            WStr::from_utf16le(&buff[2..len]).map_or_else(
+                |_| "Parse Error".to_string(),
+                |s| s.to_string()
+            )
+        } else {
+            "".to_string()
+        };
+
         debug!("03{:02X} ({}): {} '{}'", index, len, &buff[0..len].to_hex(), rstatus);
 
         match rstatus.into() {
