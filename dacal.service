@@ -1,0 +1,12 @@
+[Unit]
+Description=DACAL CD Organizer HTTP Service
+
+[Service]
+Type=simple
+User=dacal
+Group=dacal
+ExecStart=/home/dacal/dacal_service.sh
+Restart=always
+
+[Install]
+WantedBy=mutli-user.target
