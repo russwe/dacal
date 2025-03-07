@@ -111,13 +111,14 @@ fn cmd_list(identify: bool, status: bool) -> Result<(), Box<dyn Error>> {
         index += 1;
         if identify {
             print!("{:03}: ", index);
-            d.access_slot(index)?;
+            _ = d.access_slot(index);
         }
 
         print!("{}", d.id);
         if status {
-            let s = d.get_status()?;
-            print!(": {}", s);
+            if let Ok(s) = d.get_status() {
+                print!(": {}", s);
+            }
         }
         println!();
     }
